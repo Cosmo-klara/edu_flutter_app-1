@@ -11,7 +11,7 @@ class AuthService {
     final response = await _client.post(
       '/auth/login',
       body: <String, dynamic>{
-        'id': credentials.username, // 后端login接口需要id字段，这里传username作为id
+        'username': credentials.username, // 使用用户名登录
         'password': credentials.password,
       },
     );

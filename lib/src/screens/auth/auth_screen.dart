@@ -350,8 +350,8 @@ class _LoginForm extends StatelessWidget {
         key: const ValueKey('login-form'),
         children: [
           _AuthField(
-            label: '账号',
-            hintText: '请输入账号（5-20个字符）',
+            label: '用户名',
+            hintText: '请输入用户名',
             controller: userIdController,
             validator: validator,
             textInputAction: TextInputAction.next,
