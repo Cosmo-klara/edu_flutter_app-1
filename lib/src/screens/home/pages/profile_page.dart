@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
+import 'package:zygc_flutter_prototype/src/models/auth_models.dart';
 import 'package:zygc_flutter_prototype/src/widgets/section_card.dart';
 import 'package:zygc_flutter_prototype/src/widgets/tag_chip.dart';
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({required this.onSignOut, super.key});
+  const ProfilePage({required this.user, required this.onSignOut, super.key});
 
+  final AuthUser user;
   final VoidCallback onSignOut;
 
   @override
@@ -23,13 +25,13 @@ class ProfilePage extends StatelessWidget {
             trailing: FilledButton.tonal(onPressed: () {}, child: const Text('修改信息')),
             child: Column(
               children: [
-                _ProfileRow(label: '姓名', value: '李晓同'),
+                _ProfileRow(label: '姓名', value: user.username.isNotEmpty ? user.username : '未设置'),
                 const SizedBox(height: 12),
-                _ProfileRow(label: '账号', value: 'lixiaotong2026'),
+                _ProfileRow(label: '账号', value: user.userId),
                 const SizedBox(height: 12),
-                _ProfileRow(label: '所在省份', value: '浙江省'),
+                _ProfileRow(label: '所在省份', value: user.province ?? '未填写'),
                 const SizedBox(height: 12),
-                _ProfileRow(label: '毕业高中', value: '杭州市第二中学'),
+                _ProfileRow(label: '毕业高中', value: user.schoolId?.toString() ?? '未填写'),
               ],
             ),
           ),

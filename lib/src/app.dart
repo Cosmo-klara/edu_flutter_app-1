@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'models/auth_models.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/home/home_shell.dart';
+import 'services/api_exception.dart';
+import 'services/auth_service.dart';
 import 'theme/app_theme.dart';
 
 class ZygcApp extends StatefulWidget {
@@ -12,10 +15,60 @@ class ZygcApp extends StatefulWidget {
 }
 
 class _ZygcAppState extends State<ZygcApp> {
-  bool _isAuthenticated = false;
+  final AuthService _authService = AuthService();
 
-  void _onAuthenticationChanged(bool value) {
-    setState(() => _isAuthenticated = value);
+  AuthSession? _session;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  bool get _isAuthenticated => _session != null;
+
+  Future<void> _handleLogin(AuthCredentials credentials) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final session = await _authService.login(credentials);
+      setState(() {
+        _session = session;
+      });
+    } on ApiException catch (e) {
+      setState(() => _errorMessage = e.message);
+    } catch (e) {
+      setState(() => _errorMessage = '登录失败，请稍后重试');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleRegister(RegistrationPayload payload) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      await _authService.register(payload);
+      // 注册成功后尝试自动登录，使用生成的ID而不是username
+      await _handleLogin(AuthCredentials(username: payload.generatedId, password: payload.password));
+    } on ApiException catch (e) {
+      setState(() => _errorMessage = e.message);
+    } catch (e) {
+      setState(() => _errorMessage = '注册失败，请稍后重试');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _signOut() {
+    setState(() {
+      _session = null;
+      _errorMessage = null;
+    });
   }
 
   @override
@@ -24,8 +77,16 @@ class _ZygcAppState extends State<ZygcApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: _isAuthenticated
-          ? HomeShell(onSignOut: () => _onAuthenticationChanged(false))
-          : AuthScreen(onAuthenticated: () => _onAuthenticationChanged(true)),
+          ? HomeShell(
+              session: _session!,
+              onSignOut: _signOut,
+            )
+          : AuthScreen(
+              onLogin: _handleLogin,
+              onRegister: _handleRegister,
+              isLoading: _isLoading,
+              errorMessage: _errorMessage,
+            ),
     );
   }
 }

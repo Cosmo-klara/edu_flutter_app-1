@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
 
-class AuthScreen extends StatefulWidget {
-  const AuthScreen({required this.onAuthenticated, super.key});
+import '../../models/auth_models.dart';
 
-  final VoidCallback onAuthenticated;
+class AuthScreen extends StatefulWidget {
+  const AuthScreen({
+    required this.onLogin,
+    required this.onRegister,
+    required this.isLoading,
+    this.errorMessage,
+    super.key,
+  });
+
+  final Future<void> Function(AuthCredentials) onLogin;
+  final Future<void> Function(RegistrationPayload) onRegister;
+  final bool isLoading;
+  final String? errorMessage;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -14,6 +25,13 @@ class _AuthScreenState extends State<AuthScreen> {
   final _registerKey = GlobalKey<FormState>();
   bool _isLoginSelected = true;
 
+  late final TextEditingController _loginIdController = TextEditingController();
+  late final TextEditingController _loginPasswordController = TextEditingController();
+
+  late final TextEditingController _registerIdController = TextEditingController();
+  late final TextEditingController _registerPasswordController = TextEditingController();
+  late final TextEditingController _registerConfirmController = TextEditingController();
+
   void _toggleTab(bool isLogin) {
     if (_isLoginSelected == isLogin) {
       return;
@@ -21,11 +39,57 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => _isLoginSelected = isLogin);
   }
 
-  void _onSubmit() {
+  String? _requiredValidator(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return '请填写此字段';
+    }
+    return null;
+  }
+
+  String? _confirmPasswordValidator(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return '请再次输入密码';
+    }
+    if (value != _registerPasswordController.text) {
+      return '两次输入的密码不一致';
+    }
+    return null;
+  }
+
+  Future<void> _onSubmit() async {
+    if (widget.isLoading) {
+      return;
+    }
     final key = _isLoginSelected ? _loginKey : _registerKey;
     if (key.currentState?.validate() ?? false) {
-      widget.onAuthenticated();
+      FocusScope.of(context).unfocus();
+      if (_isLoginSelected) {
+        await widget.onLogin(
+          AuthCredentials(
+            username: _loginIdController.text.trim(),
+            password: _loginPasswordController.text,
+          ),
+        );
+      } else {
+        await widget.onRegister(
+          RegistrationPayload(
+            username: _registerIdController.text.trim(),
+            password: _registerPasswordController.text,
+            confirmPassword: _registerConfirmController.text,
+          ),
+        );
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    _loginIdController.dispose();
+    _loginPasswordController.dispose();
+    _registerIdController.dispose();
+    _registerPasswordController.dispose();
+    _registerConfirmController.dispose();
+    super.dispose();
   }
 
   @override
@@ -41,13 +105,15 @@ class _AuthScreenState extends State<AuthScreen> {
             end: Alignment.bottomRight,
           ),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(32),
-              child: DecoratedBox(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(32),
+                  child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(32),
@@ -98,11 +164,41 @@ class _AuthScreenState extends State<AuthScreen> {
                         onTabSelected: _toggleTab,
                       ),
                       const SizedBox(height: 24),
+                      if (widget.errorMessage != null) ...[
+                        Container(
+                          width: double.infinity,
+                          constraints: const BoxConstraints(maxHeight: 100),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: SingleChildScrollView(
+                            child: Text(
+                              widget.errorMessage!,
+                              style: theme.textTheme.bodySmall?.copyWith(color: Colors.white),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 250),
                         child: _isLoginSelected
-                            ? _LoginForm(formKey: _loginKey)
-                            : _RegisterForm(formKey: _registerKey),
+                            ? _LoginForm(
+                                formKey: _loginKey,
+                                userIdController: _loginIdController,
+                                passwordController: _loginPasswordController,
+                                validator: _requiredValidator,
+                              )
+                            : _RegisterForm(
+                                formKey: _registerKey,
+                                userIdController: _registerIdController,
+                                passwordController: _registerPasswordController,
+                                confirmController: _registerConfirmController,
+                                requiredValidator: _requiredValidator,
+                                confirmValidator: _confirmPasswordValidator,
+                              ),
                       ),
                       const SizedBox(height: 28),
                       SizedBox(
@@ -116,11 +212,27 @@ class _AuthScreenState extends State<AuthScreen> {
                               borderRadius: BorderRadius.circular(18),
                             ),
                           ),
-                          onPressed: _onSubmit,
-                          child: Text(_isLoginSelected ? '立即登录' : '注册账号'),
+                          onPressed: widget.isLoading ? null : () => _onSubmit(),
+                          child: widget.isLoading
+                              ? Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(strokeWidth: 2.2),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text('请稍候...'),
+                                  ],
+                                )
+                              : Text(_isLoginSelected ? '立即登录' : '注册账号'),
                         ),
                       ),
                     ],
+                  ),
+                ),
                   ),
                 ),
               ),
@@ -218,9 +330,17 @@ class _AuthTabButton extends StatelessWidget {
 }
 
 class _LoginForm extends StatelessWidget {
-  const _LoginForm({required this.formKey});
+  const _LoginForm({
+    required this.formKey,
+    required this.userIdController,
+    required this.passwordController,
+    required this.validator,
+  });
 
   final GlobalKey<FormState> formKey;
+  final TextEditingController userIdController;
+  final TextEditingController passwordController;
+  final String? Function(String?) validator;
 
   @override
   Widget build(BuildContext context) {
@@ -232,14 +352,18 @@ class _LoginForm extends StatelessWidget {
           _AuthField(
             label: '账号',
             hintText: '请输入账号（5-20个字符）',
-            validator: _requiredValidator,
+            controller: userIdController,
+            validator: validator,
+            textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 18),
           _AuthField(
             label: '密码',
             hintText: '请输入密码',
             obscureText: true,
-            validator: _requiredValidator,
+            controller: passwordController,
+            validator: validator,
+            textInputAction: TextInputAction.done,
           ),
         ],
       ),
@@ -248,9 +372,21 @@ class _LoginForm extends StatelessWidget {
 }
 
 class _RegisterForm extends StatelessWidget {
-  const _RegisterForm({required this.formKey});
+  const _RegisterForm({
+    required this.formKey,
+    required this.userIdController,
+    required this.passwordController,
+    required this.confirmController,
+    required this.requiredValidator,
+    required this.confirmValidator,
+  });
 
   final GlobalKey<FormState> formKey;
+  final TextEditingController userIdController;
+  final TextEditingController passwordController;
+  final TextEditingController confirmController;
+  final String? Function(String?) requiredValidator;
+  final String? Function(String?) confirmValidator;
 
   @override
   Widget build(BuildContext context) {
@@ -260,23 +396,29 @@ class _RegisterForm extends StatelessWidget {
         key: const ValueKey('register-form'),
         children: [
           _AuthField(
-            label: '账号',
-            hintText: '5-20个字符，支持字母和数字',
-            validator: _requiredValidator,
+            label: '用户名',
+            hintText: '请输入用户名（5-20个字符）',
+            controller: userIdController,
+            validator: requiredValidator,
+            textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 18),
           _AuthField(
             label: '密码',
-            hintText: '10-20个字符',
+            hintText: '请输入密码',
             obscureText: true,
-            validator: _requiredValidator,
+            controller: passwordController,
+            validator: requiredValidator,
+            textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: 18),
           _AuthField(
             label: '确认密码',
             hintText: '再次输入密码',
             obscureText: true,
-            validator: _requiredValidator,
+            controller: confirmController,
+            validator: confirmValidator,
+            textInputAction: TextInputAction.done,
           ),
         ],
       ),
@@ -290,12 +432,16 @@ class _AuthField extends StatelessWidget {
     required this.hintText,
     this.obscureText = false,
     this.validator,
+    this.controller,
+    this.textInputAction,
   });
 
   final String label;
   final String hintText;
   final bool obscureText;
   final String? Function(String?)? validator;
+  final TextEditingController? controller;
+  final TextInputAction? textInputAction;
 
   @override
   Widget build(BuildContext context) {
@@ -313,6 +459,8 @@ class _AuthField extends StatelessWidget {
         TextFormField(
           obscureText: obscureText,
           validator: validator,
+          controller: controller,
+          textInputAction: textInputAction,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: hintText,
@@ -339,9 +487,3 @@ class _AuthField extends StatelessWidget {
   }
 }
 
-String? _requiredValidator(String? value) {
-  if (value == null || value.trim().isEmpty) {
-    return '请填写此字段';
-  }
-  return null;
-}

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:zygc_flutter_prototype/src/models/auth_models.dart';
+import 'package:zygc_flutter_prototype/src/state/auth_scope.dart';
 import 'pages/college_page.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/info_page.dart';
@@ -7,8 +9,9 @@ import 'pages/profile_page.dart';
 import 'pages/recommend_page.dart';
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({required this.onSignOut, super.key});
+  const HomeShell({required this.session, required this.onSignOut, super.key});
 
+  final AuthSession session;
   final VoidCallback onSignOut;
 
   @override
@@ -42,7 +45,7 @@ class _HomeShellState extends State<HomeShell> {
     _HomeDestination(
       label: '我的',
       icon: Icons.person_rounded,
-      builder: (context) => ProfilePage(onSignOut: widget.onSignOut),
+      builder: (context) => ProfilePage(user: widget.session.user, onSignOut: widget.onSignOut),
     ),
   ];
 
@@ -54,50 +57,54 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final destination = _destinations[_index];
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFEFF3FF),
-      body: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFFEFF3FF), Color(0xFFFAFBFF)],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
+    return AuthScope(
+      session: widget.session,
+      onSignOut: widget.onSignOut,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFEFF3FF),
+        body: SafeArea(
+          bottom: false,
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFEFF3FF), Color(0xFFFAFBFF)],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
                       ),
-                    ),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 250),
-                      child: KeyedSubtree(
-                        key: ValueKey(destination.label),
-                        child: destination.builder(context),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        child: KeyedSubtree(
+                          key: ValueKey(destination.label),
+                          child: destination.builder(context),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const Positioned(
-              right: 24,
-              bottom: 92,
-              child: _FloatingAction(),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _BottomNavBar(
-                items: _destinations,
-                currentIndex: _index,
-                onChanged: _onDestinationSelected,
+                ],
               ),
-            ),
-          ],
+              const Positioned(
+                right: 24,
+                bottom: 92,
+                child: _FloatingAction(),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _BottomNavBar(
+                  items: _destinations,
+                  currentIndex: _index,
+                  onChanged: _onDestinationSelected,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

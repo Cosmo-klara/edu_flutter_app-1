@@ -1,0 +1,58 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import 'api_exception.dart';
+
+class ApiClient {
+  ApiClient({http.Client? httpClient, String? baseUrl})
+      : _httpClient = httpClient ?? http.Client(),
+        _baseUrl = baseUrl ?? const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:3000');
+
+  final http.Client _httpClient;
+  final String _baseUrl;
+
+  Future<Map<String, dynamic>> post(
+    String path, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? body,
+  }) async {
+    final uri = Uri.parse('$_baseUrl$path');
+    final response = await _httpClient.post(
+      uri,
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=utf-8',
+        if (headers != null) ...headers,
+      },
+      body: jsonEncode(body ?? <String, dynamic>{}),
+    );
+    return _handleResponse(response);
+  }
+
+  Map<String, dynamic> _handleResponse(http.Response response) {
+    final statusCode = response.statusCode;
+    if (statusCode < 200 || statusCode >= 300) {
+      throw ApiException(_extractErrorMessage(response.body) ?? '请求失败', statusCode: statusCode);
+    }
+    if (response.body.isEmpty) {
+      return <String, dynamic>{};
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+    throw ApiException('无法解析服务器返回的数据', statusCode: statusCode);
+  }
+
+  String? _extractErrorMessage(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        return decoded['error']?.toString() ?? decoded['message']?.toString();
+      }
+      return body;
+    } catch (_) {
+      return body.isEmpty ? null : body;
+    }
+  }
+}
