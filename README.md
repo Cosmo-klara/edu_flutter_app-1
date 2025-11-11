@@ -81,17 +81,6 @@ flutter doctor
 4. **运行项目**
 先运行后端服务
 
-数据库配置（我这边暂时用的阿里云数据库）：
-```bash 
-    host: process.env.DB_HOST || '39.105.31.73',
-    port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 3306,
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || 'Cbers123123',
-    database: process.env.DB_NAME || 'Manager',
-
-```
-
-
 Web 端:
 ```bash
 flutter run -d chrome
