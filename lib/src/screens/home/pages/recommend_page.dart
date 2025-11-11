@@ -4,7 +4,9 @@ import 'package:zygc_flutter_prototype/src/widgets/section_card.dart';
 import 'package:zygc_flutter_prototype/src/widgets/tag_chip.dart';
 
 class RecommendPage extends StatefulWidget {
-  const RecommendPage({super.key});
+  const RecommendPage({super.key, required this.onViewCollegeList});
+
+  final VoidCallback onViewCollegeList;
 
   @override
   State<RecommendPage> createState() => _RecommendPageState();
@@ -37,6 +39,10 @@ class _RecommendPageState extends State<RecommendPage> {
         _filters.add('全部');
       }
     });
+  }
+
+  void _showToast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -108,18 +114,21 @@ class _RecommendPageState extends State<RecommendPage> {
             ],
           ),
           const SizedBox(height: 24),
-          const _CollegeCard(
+          _CollegeCard(
             name: '华东师范大学',
             location: '上海 · 师范类 · 985/211',
             matchScore: 92,
             probability: 0.68,
             description: '成绩匹配度高（高出 16 分）+ 偏好吻合（教育学 + 长三角）+ 高中历史录取率 86%。',
-            tags: [
+            tags: const [
               TagChip(label: '稳妥', color: Color(0xFF21B573)),
               TagChip(label: '偏好吻合'),
               TagChip(label: '高中录取率 86%', color: Color(0xFF2C5BF0)),
             ],
-            highlights: ['2024：最低分 612 | 位次 10,800', '2023：最低分 608 | 位次 11,200', '2022：最低分 606 | 位次 11,650'],
+            highlights: const ['2024：最低分 612 | 位次 10,800', '2023：最低分 608 | 位次 11,200', '2022：最低分 606 | 位次 11,650'],
+            onView: widget.onViewCollegeList,
+            onCollect: () => _showToast('已收藏院校'),
+            onAddDraft: () => _showToast('已加入草案'),
           ),
           const SizedBox(height: 20),
           const _CollegeCard(
@@ -213,6 +222,9 @@ class _CollegeCard extends StatelessWidget {
     required this.description,
     required this.tags,
     required this.highlights,
+    this.onView,
+    this.onCollect,
+    this.onAddDraft,
   });
 
   final String name;
@@ -222,6 +234,9 @@ class _CollegeCard extends StatelessWidget {
   final String description;
   final List<Widget> tags;
   final List<String> highlights;
+  final VoidCallback? onView;
+  final VoidCallback? onCollect;
+  final VoidCallback? onAddDraft;
 
   @override
   Widget build(BuildContext context) {
@@ -266,8 +281,10 @@ class _CollegeCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Text('${(probability * 100).round()}%',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+              Text(
+                '${(probability * 100).round()}%',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -297,21 +314,21 @@ class _CollegeCard extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {},
+                  onPressed: onCollect,
                   child: const Text('收藏'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {},
+                  onPressed: onAddDraft,
                   child: const Text('加入草案'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton.tonal(
-                  onPressed: () {},
+                  onPressed: onView,
                   child: const Text('查看详情'),
                 ),
               ),

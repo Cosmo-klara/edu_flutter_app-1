@@ -5,7 +5,20 @@ import 'package:zygc_flutter_prototype/src/widgets/stat_chip.dart';
 import 'package:zygc_flutter_prototype/src/widgets/tag_chip.dart';
 
 class DashboardPage extends StatelessWidget {
-  const DashboardPage({super.key});
+  const DashboardPage({
+    super.key,
+    required this.onGoInfo,
+    required this.onGoRecommend,
+    required this.onGoProfile,
+    required this.onGoCollege,
+    required this.onGoAnalysis,
+  });
+
+  final VoidCallback onGoInfo;
+  final VoidCallback onGoRecommend;
+  final VoidCallback onGoProfile;
+  final VoidCallback onGoCollege;
+  final VoidCallback onGoAnalysis;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +56,11 @@ class DashboardPage extends StatelessWidget {
           const SizedBox(height: 20),
           const _StatSummary(),
           const SizedBox(height: 20),
-          const _QuickActions(),
+          _QuickActions(
+            onGoInfo: onGoInfo,
+            onGoRecommend: onGoRecommend,
+            onGoProfile: onGoProfile,
+          ),
           const SizedBox(height: 20),
           SectionCard(
             title: '成绩定位',
@@ -58,15 +75,16 @@ class DashboardPage extends StatelessWidget {
               ],
             ),
           ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(onPressed: onGoAnalysis, child: const Text('查看分析 →')),
+          ),
           const SizedBox(height: 16),
           const _MessageBanner(),
           const SizedBox(height: 20),
           SectionCard(
             title: '目标追踪',
-            trailing: TextButton(
-              onPressed: () {},
-              child: const Text('查看全部 →'),
-            ),
+            trailing: TextButton(onPressed: onGoCollege, child: const Text('查看全部 →')),
             child: Column(
               children: const [
                 _GoalRow(
@@ -213,28 +231,39 @@ class _StatSummary extends StatelessWidget {
 }
 
 class _QuickActions extends StatelessWidget {
-  const _QuickActions();
+  const _QuickActions({
+    required this.onGoInfo,
+    required this.onGoRecommend,
+    required this.onGoProfile,
+  });
+
+  final VoidCallback onGoInfo;
+  final VoidCallback onGoRecommend;
+  final VoidCallback onGoProfile;
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      children: const [
+      children: [
         _QuickActionButton(
           icon: Icons.edit_note_rounded,
           label: '完善高考信息',
           tone: _QuickActionTone.primary,
+          onTap: onGoInfo,
         ),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
         _QuickActionButton(
           icon: Icons.track_changes_rounded,
           label: '查看志愿推荐',
           tone: _QuickActionTone.neutral,
+          onTap: onGoRecommend,
         ),
-        SizedBox(height: 12),
+        const SizedBox(height: 12),
         _QuickActionButton(
           icon: Icons.person_rounded,
           label: '进入个人中心',
           tone: _QuickActionTone.outline,
+          onTap: onGoProfile,
         ),
       ],
     );
@@ -244,11 +273,17 @@ class _QuickActions extends StatelessWidget {
 enum _QuickActionTone { primary, neutral, outline }
 
 class _QuickActionButton extends StatelessWidget {
-  const _QuickActionButton({required this.icon, required this.label, required this.tone});
+  const _QuickActionButton({
+    required this.icon,
+    required this.label,
+    required this.tone,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String label;
   final _QuickActionTone tone;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -277,7 +312,7 @@ class _QuickActionButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         elevation: 2,
         child: InkWell(
-          onTap: () {},
+          onTap: onTap,
           borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),

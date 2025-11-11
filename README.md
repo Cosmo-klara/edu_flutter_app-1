@@ -79,6 +79,18 @@ flutter doctor
 ```
 
 4. **运行项目**
+先运行后端服务
+
+数据库配置（我这边暂时用的阿里云数据库）：
+```bash 
+    host: process.env.DB_HOST || '39.105.31.73',
+    port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 3306,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || 'Cbers123123',
+    database: process.env.DB_NAME || 'Manager',
+
+```
+
 
 Web 端:
 ```bash
@@ -94,4 +106,13 @@ Android 模拟器:
 ```bash
 flutter run -d android
 ```
+
+# 11-11
+
+## 项目更新说明
+- 前端登录/注册流程新增省份选择，并接入注册接口校验。
+- 个人信息页调用 `/student-score/mine` 展示最新成绩，院校页支持省份筛选与院校详情查看。
+- 推荐、院校等页面完成导航互通和卡片样式优化，完善按钮交互。
+- 后端开放 `/colleges` 查询能力
+
 

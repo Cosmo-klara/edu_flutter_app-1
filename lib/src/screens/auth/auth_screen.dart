@@ -31,6 +31,47 @@ class _AuthScreenState extends State<AuthScreen> {
   late final TextEditingController _registerIdController = TextEditingController();
   late final TextEditingController _registerPasswordController = TextEditingController();
   late final TextEditingController _registerConfirmController = TextEditingController();
+  late final TextEditingController _registerSchoolController = TextEditingController();
+  static const List<String> _provinces = [
+    '北京市',
+    '天津市',
+    '河北省',
+    '山西省',
+    '内蒙古自治区',
+    '辽宁省',
+    '吉林省',
+    '黑龙江省',
+    '上海市',
+    '江苏省',
+    '浙江省',
+    '安徽省',
+    '福建省',
+    '江西省',
+    '山东省',
+    '河南省',
+    '湖北省',
+    '湖南省',
+    '广东省',
+    '广西壮族自治区',
+    '海南省',
+    '重庆市',
+    '四川省',
+    '贵州省',
+    '云南省',
+    '西藏自治区',
+    '陕西省',
+    '甘肃省',
+    '青海省',
+    '宁夏回族自治区',
+    '新疆维吾尔自治区',
+  ];
+  String? _selectedProvince;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedProvince = _provinces.first;
+  }
 
   void _toggleTab(bool isLogin) {
     if (_isLoginSelected == isLogin) {
@@ -76,6 +117,8 @@ class _AuthScreenState extends State<AuthScreen> {
             username: _registerIdController.text.trim(),
             password: _registerPasswordController.text,
             confirmPassword: _registerConfirmController.text,
+            province: _selectedProvince!,
+            schoolName: _registerSchoolController.text.trim(),
           ),
         );
       }
@@ -89,6 +132,7 @@ class _AuthScreenState extends State<AuthScreen> {
     _registerIdController.dispose();
     _registerPasswordController.dispose();
     _registerConfirmController.dispose();
+    _registerSchoolController.dispose();
     super.dispose();
   }
 
@@ -196,6 +240,10 @@ class _AuthScreenState extends State<AuthScreen> {
                                 userIdController: _registerIdController,
                                 passwordController: _registerPasswordController,
                                 confirmController: _registerConfirmController,
+                                schoolController: _registerSchoolController,
+                                provinces: _provinces,
+                                selectedProvince: _selectedProvince,
+                                onProvinceChanged: (value) => setState(() => _selectedProvince = value),
                                 requiredValidator: _requiredValidator,
                                 confirmValidator: _confirmPasswordValidator,
                               ),
@@ -377,6 +425,10 @@ class _RegisterForm extends StatelessWidget {
     required this.userIdController,
     required this.passwordController,
     required this.confirmController,
+    required this.schoolController,
+    required this.provinces,
+    required this.selectedProvince,
+    required this.onProvinceChanged,
     required this.requiredValidator,
     required this.confirmValidator,
   });
@@ -385,6 +437,10 @@ class _RegisterForm extends StatelessWidget {
   final TextEditingController userIdController;
   final TextEditingController passwordController;
   final TextEditingController confirmController;
+  final TextEditingController schoolController;
+  final List<String> provinces;
+  final String? selectedProvince;
+  final ValueChanged<String?> onProvinceChanged;
   final String? Function(String?) requiredValidator;
   final String? Function(String?) confirmValidator;
 
@@ -399,6 +455,61 @@ class _RegisterForm extends StatelessWidget {
             label: '用户名',
             hintText: '请输入用户名（5-20个字符）',
             controller: userIdController,
+            validator: requiredValidator,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 18),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '所在省份',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            value: selectedProvince,
+            isExpanded: true,
+            validator: (value) => value == null || value.isEmpty ? '请选择所在省份' : null,
+            onChanged: onProvinceChanged,
+            hint: const Text('请选择所在省份', style: TextStyle(color: Colors.white70)),
+            items: provinces
+                .map(
+                  (p) => DropdownMenuItem<String>(
+                    value: p,
+                    child: Text(p, style: const TextStyle(color: Colors.white), overflow: TextOverflow.ellipsis),
+                  ),
+                )
+                .toList(),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.1),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.25)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.25)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: const BorderSide(color: Colors.white),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+            ),
+            dropdownColor: const Color(0xFF2C5BF0),
+            style: const TextStyle(color: Colors.white),
+            iconEnabledColor: Colors.white70,
+          ),
+          const SizedBox(height: 18),
+          _AuthField(
+            label: '学校名称',
+            hintText: '请输入所在学校',
+            controller: schoolController,
             validator: requiredValidator,
             textInputAction: TextInputAction.next,
           ),

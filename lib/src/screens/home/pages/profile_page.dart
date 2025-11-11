@@ -5,10 +5,20 @@ import 'package:zygc_flutter_prototype/src/widgets/section_card.dart';
 import 'package:zygc_flutter_prototype/src/widgets/tag_chip.dart';
 
 class ProfilePage extends StatelessWidget {
-  const ProfilePage({required this.user, required this.onSignOut, super.key});
+  const ProfilePage({
+    required this.user,
+    required this.onSignOut,
+    required this.onEditProfile,
+    required this.onAdjustWeights,
+    required this.onManageShare,
+    super.key,
+  });
 
   final AuthUser user;
   final VoidCallback onSignOut;
+  final VoidCallback onEditProfile;
+  final VoidCallback onAdjustWeights;
+  final VoidCallback onManageShare;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +32,7 @@ class ProfilePage extends StatelessWidget {
           SectionCard(
             title: '账户信息',
             subtitle: '高考志愿填报系统账号',
-            trailing: FilledButton.tonal(onPressed: () {}, child: const Text('修改信息')),
+            trailing: FilledButton.tonal(onPressed: onEditProfile, child: const Text('修改信息')),
             child: Column(
               children: [
                 _ProfileRow(label: '姓名', value: user.username.isNotEmpty ? user.username : '未设置'),
@@ -31,7 +41,7 @@ class ProfilePage extends StatelessWidget {
                 const SizedBox(height: 12),
                 _ProfileRow(label: '所在省份', value: user.province ?? '未填写'),
                 const SizedBox(height: 12),
-                _ProfileRow(label: '毕业高中', value: user.schoolId?.toString() ?? '未填写'),
+                _ProfileRow(label: '毕业高中', value: user.schoolName ?? '未填写'),
               ],
             ),
           ),
@@ -39,7 +49,7 @@ class ProfilePage extends StatelessWidget {
           SectionCard(
             title: '偏好权重',
             subtitle: '驱动推荐策略的权重配置',
-            trailing: FilledButton.tonal(onPressed: () {}, child: const Text('调整权重')),
+            trailing: FilledButton.tonal(onPressed: onAdjustWeights, child: const Text('调整权重')),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -55,7 +65,7 @@ class ProfilePage extends StatelessWidget {
           SectionCard(
             title: '共享设置',
             subtitle: '与家长、老师协同备考',
-            trailing: FilledButton.tonal(onPressed: () {}, child: const Text('管理权限')),
+            trailing: FilledButton.tonal(onPressed: onManageShare, child: const Text('管理权限')),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

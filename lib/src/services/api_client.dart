@@ -20,13 +20,29 @@ class ApiClient {
     final uri = Uri.parse('$_baseUrl$path');
     final response = await _httpClient.post(
       uri,
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=utf-8',
-        if (headers != null) ...headers,
-      },
+      headers: _mergeHeaders(headers),
       body: jsonEncode(body ?? <String, dynamic>{}),
     );
     return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> get(
+    String path, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? query,
+  }) async {
+    final uri = Uri.parse('$_baseUrl$path').replace(
+      queryParameters: query?.map((key, value) => MapEntry(key, value.toString())),
+    );
+    final response = await _httpClient.get(uri, headers: _mergeHeaders(headers));
+    return _handleResponse(response);
+  }
+
+  Map<String, String> _mergeHeaders(Map<String, String>? headers) {
+    return <String, String>{
+      'Content-Type': 'application/json; charset=utf-8',
+      if (headers != null) ...headers,
+    };
   }
 
   Map<String, dynamic> _handleResponse(http.Response response) {

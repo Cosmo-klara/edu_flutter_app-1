@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:zygc_flutter_prototype/src/models/auth_models.dart';
 import 'package:zygc_flutter_prototype/src/state/auth_scope.dart';
+import 'pages/analysis_page.dart';
 import 'pages/college_page.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/info_page.dart';
@@ -20,38 +21,80 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 2;
+  late final List<_HomeDestination> _destinations;
 
-  late final List<_HomeDestination> _destinations = [
-    _HomeDestination(
-      label: '高考',
-      icon: Icons.edit_note_rounded,
-      builder: (context) => const InfoPage(),
-    ),
-    _HomeDestination(
-      label: '推荐',
-      icon: Icons.track_changes_rounded,
-      builder: (context) => const RecommendPage(),
-    ),
-    _HomeDestination(
-      label: '首页',
-      icon: Icons.home_filled,
-      builder: (context) => const DashboardPage(),
-    ),
-    _HomeDestination(
-      label: '院校',
-      icon: Icons.account_balance_rounded,
-      builder: (context) => const CollegePage(),
-    ),
-    _HomeDestination(
-      label: '我的',
-      icon: Icons.person_rounded,
-      builder: (context) => ProfilePage(user: widget.session.user, onSignOut: widget.onSignOut),
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _destinations = [
+      _HomeDestination(
+        label: '高考',
+        icon: Icons.edit_note_rounded,
+        builder: (context) => InfoPage(
+          onEditProfile: () => _navigateTo(4),
+          onViewPreferences: () => _navigateTo(1),
+          onViewAnalysis: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const AnalysisPage()),
+          ),
+        ),
+      ),
+      _HomeDestination(
+        label: '推荐',
+        icon: Icons.track_changes_rounded,
+        builder: (context) => RecommendPage(
+          onViewCollegeList: () => _navigateTo(3),
+        ),
+      ),
+      _HomeDestination(
+        label: '首页',
+        icon: Icons.home_filled,
+        builder: (context) => DashboardPage(
+          onGoInfo: () => _navigateTo(0),
+          onGoRecommend: () => _navigateTo(1),
+          onGoProfile: () => _navigateTo(4),
+          onGoCollege: () => _navigateTo(3),
+          onGoAnalysis: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const AnalysisPage()),
+          ),
+        ),
+      ),
+      _HomeDestination(
+        label: '院校',
+        icon: Icons.account_balance_rounded,
+        builder: (context) => const CollegePage(),
+      ),
+      _HomeDestination(
+        label: '我的',
+        icon: Icons.person_rounded,
+        builder: (context) => ProfilePage(
+          user: widget.session.user,
+          onSignOut: widget.onSignOut,
+          onEditProfile: () => _navigateTo(0),
+          onAdjustWeights: () => _navigateTo(1),
+          onManageShare: () => showDialog<void>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('共享设置'),
+              content: const Text('请前往协同管理页面设置共享对象。'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('好的'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
 
-  void _onDestinationSelected(int value) {
+  void _navigateTo(int value) {
+    if (_index == value) return;
     setState(() => _index = value);
   }
+
+  void _onDestinationSelected(int value) => _navigateTo(value);
 
   @override
   Widget build(BuildContext context) {

@@ -52,7 +52,7 @@ class _ZygcAppState extends State<ZygcApp> {
     try {
       await _authService.register(payload);
       // 注册成功后尝试自动登录，使用生成的ID而不是username
-      await _handleLogin(AuthCredentials(username: payload.generatedId, password: payload.password));
+      await _handleLogin(AuthCredentials(username: payload.username, password: payload.password));
     } on ApiException catch (e) {
       setState(() => _errorMessage = e.message);
     } catch (e) {
