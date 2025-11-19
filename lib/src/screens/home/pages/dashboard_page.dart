@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-
+import 'package:zygc_flutter_prototype/src/widgets/tag_chip.dart';
 import 'package:zygc_flutter_prototype/src/widgets/section_card.dart';
 import 'package:zygc_flutter_prototype/src/widgets/stat_chip.dart';
 import 'score_ai_analysis_page.dart';
