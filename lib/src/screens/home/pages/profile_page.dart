@@ -229,10 +229,10 @@ class ProfilePage extends StatelessWidget {
                           final userId = AuthScope.of(context).session.user.userId;
                           final prefs = await SharedPreferences.getInstance();
                           for (final key in [
-                            'favorites_' + userId,
-                            'weights_' + userId,
-                            'scores_' + userId,
-                            'records_' + userId,
+                            'favorites_$userId',
+                            'weights_$userId',
+                            'scores_$userId',
+                            'records_$userId',
                           ]) {
                             await prefs.remove(key);
                           }

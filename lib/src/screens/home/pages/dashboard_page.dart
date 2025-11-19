@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:zygc_flutter_prototype/src/widgets/section_card.dart';
 import 'package:zygc_flutter_prototype/src/widgets/stat_chip.dart';
 import 'analysis_page.dart';
+import 'majors_search_page.dart';
+import 'favorite_colleges_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:zygc_flutter_prototype/src/state/auth_scope.dart';
@@ -72,7 +74,14 @@ class DashboardPage extends StatelessWidget {
           const SizedBox(height: 16),
           SectionCard(
             title: '目标追踪',
-            trailing: TextButton(onPressed: onGoCollege, child: const Text('查看全部 →')),
+            trailing: TextButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const FavoriteCollegesPage()),
+                );
+              },
+              child: const Text('查看全部 →'),
+            ),
             child: FutureBuilder<List<Map<String, dynamic>>>(
               future: (() async {
                 final scope = AuthScope.of(context);
@@ -89,7 +98,7 @@ class DashboardPage extends StatelessWidget {
               })(),
               builder: (context, snapshot) {
                 final items = snapshot.data ?? const <Map<String, dynamic>>[];
-                _StatusTagVariant _variantFor(Map<String, dynamic> c) {
+                _StatusTagVariant variantFor(Map<String, dynamic> c) {
                   final cat = (c['category']?.toString() ?? '').trim();
                   final p = (c['probability'] as num?)?.toDouble() ?? 0.0;
                   if (cat == '保' || cat == '保底') return _StatusTagVariant.safe;
@@ -104,13 +113,27 @@ class DashboardPage extends StatelessWidget {
                 if (items.isEmpty) {
                   return const Text('暂无目标院校');
                 }
-                final rows = items.take(4).map((c) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _GoalRow(
-                    title: c['name']?.toString() ?? '-',
-                    variant: _variantFor(c),
-                  ),
-                )).toList();
+                final Map<_StatusTagVariant, Map<String, dynamic>> selected = {};
+                for (final c in items) {
+                  final v = variantFor(c);
+                  selected.putIfAbsent(v, () => c);
+                }
+                const order = [
+                  _StatusTagVariant.reference,
+                  _StatusTagVariant.risk,
+                  _StatusTagVariant.steady,
+                  _StatusTagVariant.safe,
+                ];
+                final rows = order
+                    .where((v) => selected.containsKey(v))
+                    .map((v) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _GoalRow(
+                            title: selected[v]!['name']?.toString() ?? '-',
+                            variant: v,
+                          ),
+                        ))
+                    .toList();
                 return Column(children: rows);
               },
             ),
@@ -249,10 +272,10 @@ class _StatSummaryState extends State<_StatSummary> {
                   child: StatChip(
                     label: '综合分数',
                     value: scoreVal != null ? '${scoreVal.round()}' : '-',
-                    meta: '位次 ' + (rankVal != null ? '$rankVal' : '-'),
+                    meta: '位次 ${rankVal != null ? '$rankVal' : '-'}',
                   ),
                 ),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: StatChip(
                     label: '匹配院校',
@@ -263,7 +286,7 @@ class _StatSummaryState extends State<_StatSummary> {
                 ),
               ],
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -301,9 +324,21 @@ class _QuickActions extends StatelessWidget {
         _QuickActionButton(
           icon: Icons.edit_note_rounded,
           label: '完善高考信息',
-          subtitle: '录入成绩、选科和偏好',
+          subtitle: '录入成绩、选科',
           tone: _QuickActionTone.primary,
           onTap: onGoInfo,
+        ),
+        const SizedBox(height: 12),
+        _QuickActionButton(
+          icon: Icons.search_rounded,
+          label: '了解专业信息',
+          subtitle: '查询专业与简介',
+          tone: _QuickActionTone.outline,
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const MajorsSearchPage()),
+            );
+          },
         ),
         const SizedBox(height: 12),
         _QuickActionButton(
@@ -367,7 +402,7 @@ class _QuickActionButton extends StatelessWidget {
         break;
     }
 
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: Material(
         color: background,
@@ -488,7 +523,7 @@ class _ScoreOverviewState extends State<_ScoreOverview> {
         }
       } catch (_) {}
     }
-    final progress = score != null ? (score! / 750.0).clamp(0.0, 1.0) : 0.0;
+    final progress = score != null ? (score / 750.0).clamp(0.0, 1.0) : 0.0;
     return {'score': score, 'rank': rank, 'topPercent': topPercent, 'progress': progress};
   }
 

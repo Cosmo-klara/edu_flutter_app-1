@@ -6,7 +6,7 @@ import 'pages/dashboard_page.dart';
 import 'pages/info_page.dart';
 import 'pages/profile_page.dart';
 import 'pages/recommend_page.dart';
-import 'pages/favorite_colleges_page.dart'; 
+import 'pages/favorite_colleges_page.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({
@@ -263,13 +263,13 @@ class _FloatingAction extends StatelessWidget {
             children: [
               Text('快速录入成绩', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 16),
-              TextField(
-                decoration: const InputDecoration(labelText: '总分', hintText: '请输入总分'),
+              const TextField(
+                decoration: InputDecoration(labelText: '总分', hintText: '请输入总分'),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 12),
-              TextField(
-                decoration: const InputDecoration(labelText: '省内排名', hintText: '请输入排名'),
+              const TextField(
+                decoration: InputDecoration(labelText: '省内排名', hintText: '请输入排名'),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 20),
@@ -301,7 +301,6 @@ class _FloatingAction extends StatelessWidget {
       ),
     );
   }
-
 
   void _openFavoritesPage(BuildContext context) {
     Navigator.of(context).push(

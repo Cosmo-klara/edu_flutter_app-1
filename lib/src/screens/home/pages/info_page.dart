@@ -103,11 +103,11 @@ class _InfoPageState extends State<InfoPage> {
 
     if (_isNewGaokao) {
       // 新高考：累加选考科目成绩
-      _selectedSubjects.forEach((subject) {
+      for (var subject in _selectedSubjects) {
         final score =
             int.tryParse(_subjectScoreControllers[subject]?.text ?? '') ?? 0;
         total += score;
-      });
+      }
     } else {
       // 旧高考：加上文综/理综成绩
       final comprehensive = int.tryParse(_comprehensiveController.text) ?? 0;
@@ -294,10 +294,10 @@ class _InfoPageState extends State<InfoPage> {
         if (_isNewGaokao) {
           examMode = '新高考(3+3)';
           // 添加选考科目成绩
-          _selectedSubjects.forEach((subject) {
+          for (var subject in _selectedSubjects) {
             scoreDetails[subject] =
                 int.parse(_subjectScoreControllers[subject]?.text ?? '0');
-          });
+          }
         } else {
           examMode = _isScience ? '旧高考(理科)' : '旧高考(文科)';
           scoreDetails[_isScience ? '理综' : '文综'] =
@@ -536,7 +536,7 @@ class _InfoPageState extends State<InfoPage> {
                         const SizedBox(height: 14),
                         if (_isExamGaokao)
                           DropdownButtonFormField<int>(
-                            value: _examYear,
+                            initialValue: _examYear,
                             decoration: const InputDecoration(
                               labelText: '高考年份',
                               border: OutlineInputBorder(),
@@ -871,7 +871,7 @@ class _InfoPageState extends State<InfoPage> {
                             ),
                           ),
                         );
-                      }).toList(),
+                      }),
                     ] else ...[
                       Container(
                         padding: const EdgeInsets.all(16),
