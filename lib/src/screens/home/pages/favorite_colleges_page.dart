@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:zygc_flutter_prototype/src/widgets/section_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zygc_flutter_prototype/src/state/auth_scope.dart';
 import 'package:zygc_flutter_prototype/src/widgets/tag_chip.dart';

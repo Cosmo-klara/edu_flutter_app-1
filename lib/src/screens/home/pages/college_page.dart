@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:zygc_flutter_prototype/src/state/auth_scope.dart';
 import 'package:zygc_flutter_prototype/src/services/api_client.dart';
 import 'package:zygc_flutter_prototype/src/widgets/section_card.dart';
-import 'favorite_colleges_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -284,55 +283,6 @@ class _CollegeLibraryTabState extends State<_CollegeLibraryTab> {
     }
   }
 
-  Future<void> _toggleFavorite(int collegeId, String collegeName) async {
-    setState(() {
-      if (_favoriteCollegeIds.contains(collegeId)) {
-        _favoriteCollegeIds.remove(collegeId);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('已取消收藏 $collegeName'), duration: const Duration(seconds: 2)),
-        );
-      } else {
-        _favoriteCollegeIds.add(collegeId);
-        final messenger = ScaffoldMessenger.maybeOf(context);
-        messenger?.clearSnackBars();
-        messenger?.showSnackBar(
-          SnackBar(
-            content: Text('已收藏 $collegeName'),
-            duration: const Duration(seconds: 2),
-            action: SnackBarAction(
-              label: '查看',
-              onPressed: () {
-                messenger?.hideCurrentSnackBar();
-                if (!mounted) return;
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const FavoriteCollegesPage()),
-                );
-              },
-            ),
-          ),
-        );
-      }
-    });
-    final scope = AuthScope.of(context);
-    final key = 'favorites_${scope.session.user.userId}';
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(key);
-    final list = raw == null || raw.isEmpty ? <dynamic>[] : (jsonDecode(raw) as List);
-    if (_favoriteCollegeIds.contains(collegeId)) {
-      if (!list.any((e) => (e['name'] ?? '') == collegeName)) {
-        list.insert(0, {
-          'name': collegeName,
-          'location': '',
-          'tags': [],
-          'addedDate': DateTime.now().toString(),
-          'notes': '',
-        });
-      }
-    } else {
-      list.removeWhere((e) => (e['name'] ?? '') == collegeName);
-    }
-    await prefs.setString(key, jsonEncode(list));
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -983,7 +933,6 @@ class _CollegeDetailSheetState extends State<_CollegeDetailSheet>
   String? _selectedProvince;
   int? _selectedYear;
   bool _provinceInitialized = false;
-  bool _isFavorite = false;
   String _normalizeProvinceShort(String input) {
     var result = input.trim();
     const suffixes = [
@@ -1026,61 +975,7 @@ class _CollegeDetailSheetState extends State<_CollegeDetailSheet>
     super.dispose();
   }
 
-  Future<void> _loadFavoriteState() async {
-    final scope = AuthScope.of(context);
-    final key = 'favorites_${scope.session.user.userId}';
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(key);
-    if (raw == null || raw.isEmpty) {
-      if (!mounted) return;
-      setState(() { _isFavorite = false; });
-      return;
-    }
-    try {
-      final list = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
-      final name = widget.summary.collegeName;
-      final exists = list.any((e) => (e['name'] ?? '') == name);
-      if (!mounted) return;
-      setState(() { _isFavorite = exists; });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() { _isFavorite = false; });
-    }
-  }
 
-  Future<void> _toggleFavoriteInDetail() async {
-    final scope = AuthScope.of(context);
-    final key = 'favorites_${scope.session.user.userId}';
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(key);
-    final name = widget.summary.collegeName;
-    final list = raw == null || raw.isEmpty ? <dynamic>[] : (jsonDecode(raw) as List);
-    if (_isFavorite) {
-      list.removeWhere((e) => (e['name'] ?? '') == name);
-      await prefs.setString(key, jsonEncode(list));
-      if (mounted) {
-        setState(() { _isFavorite = false; });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('已取消收藏 $name')),
-        );
-      }
-    } else {
-      list.insert(0, {
-        'name': name,
-        'location': widget.detailData['PROVINCE']?.toString() ?? '',
-        'tags': [],
-        'addedDate': DateTime.now().toString(),
-        'notes': '',
-      });
-      await prefs.setString(key, jsonEncode(list));
-      if (mounted) {
-        setState(() { _isFavorite = true; });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('已收藏 $name')),
-        );
-      }
-    }
-  }
 
   Future<void> _loadAdmissionRecords() async {
     if (widget.token.isEmpty) {
@@ -1144,8 +1039,6 @@ class _CollegeDetailSheetState extends State<_CollegeDetailSheet>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
       minChildSize: 0.5,

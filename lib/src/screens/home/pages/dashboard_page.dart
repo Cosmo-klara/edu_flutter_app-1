@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:zygc_flutter_prototype/src/widgets/section_card.dart';
 import 'package:zygc_flutter_prototype/src/widgets/stat_chip.dart';
-import 'package:zygc_flutter_prototype/src/widgets/tag_chip.dart';
 import 'analysis_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -531,47 +530,6 @@ class _ScoreOverviewState extends State<_ScoreOverview> {
   }
 }
 
-class _ProgressRing extends StatelessWidget {
-  const _ProgressRing({required this.percentage});
-
-  final double percentage;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 84,
-      height: 84,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: Color(0x3321B573), blurRadius: 18, offset: Offset(0, 8))],
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          SizedBox(
-            width: 74,
-            height: 74,
-            child: CircularProgressIndicator(
-              value: percentage,
-              strokeWidth: 8,
-              backgroundColor: const Color(0x1A21B573),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF21B573)),
-            ),
-          ),
-          Text(
-            '${(percentage * 100).round()}%',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF1F2430),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _ScoreTags extends StatelessWidget {
   const _ScoreTags();

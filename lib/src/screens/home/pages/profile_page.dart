@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:zygc_flutter_prototype/src/models/auth_models.dart';
 import 'package:zygc_flutter_prototype/src/state/auth_scope.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'profile_edit_page.dart';

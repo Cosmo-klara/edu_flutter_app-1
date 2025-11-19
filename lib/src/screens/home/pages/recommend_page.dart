@@ -283,9 +283,8 @@ class RecommendPageState extends State<RecommendPage> with SingleTickerProviderS
 
   /// 显示院校详情弹窗（真实数据）
   Future<void> _showCollegeDetail(String collegeName, String collegeCode) async {
-    final scope = AuthScope.of(context);
+
     final client = ApiClient();
-    final token = scope.session.token;
     Map<String, dynamic> data = {};
     try {
       final resp = await client.get('/colleges/$collegeCode');
@@ -810,9 +809,6 @@ class RecommendPageState extends State<RecommendPage> with SingleTickerProviderS
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-
     return Stack(
       children: [
         SingleChildScrollView(
@@ -1628,7 +1624,6 @@ class _CollegeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
 
     return Container(
       decoration: BoxDecoration(
