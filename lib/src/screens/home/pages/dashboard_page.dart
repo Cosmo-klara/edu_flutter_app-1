@@ -63,14 +63,14 @@ class DashboardPage extends StatelessWidget {
             onGoProfile: onGoProfile,
           ),
           const SizedBox(height: 20),
-          SectionCard(
+          const SectionCard(
             title: '成绩定位',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _ScoreOverview(),
-                const SizedBox(height: 18),
-                const _ScoreTags(),
+                SizedBox(height: 18),
+                _ScoreTags(),
               ],
             ),
           ),
@@ -184,16 +184,16 @@ class DashboardPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          SectionCard(
+          const SectionCard(
             title: '单科分析',
             subtitle: '个人能力评估',
-            trailing: const _Badge(label: '雷达对比'),
+            trailing: _Badge(label: '雷达对比'),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _SubjectRadarChart(),
-                const SizedBox(height: 18),
-                const _CoreSubjectProgressList(),
+                _SubjectRadarChart(),
+                SizedBox(height: 18),
+                _CoreSubjectProgressList(),
               ],
             ),
           ),
