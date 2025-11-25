@@ -207,7 +207,6 @@ class ProfilePage extends StatelessWidget {
             },
           ),
           const SizedBox(height: 24),
-          
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -233,6 +232,9 @@ class ProfilePage extends StatelessWidget {
                             'weights_$userId',
                             'scores_$userId',
                             'records_$userId',
+                            'recommend_plan_$userId',
+                            'deepseek_api_key_$userId',
+                            'deepseek_analysis_$userId',
                           ]) {
                             await prefs.remove(key);
                           }
