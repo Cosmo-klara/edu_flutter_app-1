@@ -9,6 +9,8 @@ import 'majors_search_page.dart';
 import 'favorite_colleges_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zygc_flutter_prototype/src/state/auth_scope.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({
@@ -182,6 +184,13 @@ class DashboardPage extends StatelessWidget {
                 );
               },
             ),
+          ),
+          const SizedBox(height: 20),
+          const SectionCard(
+            title: '一分一段',
+            subtitle: '按分数段估算人数',
+            trailing: _Badge(label: '实时更新'),
+            child: _SegmentDistributionView(),
           ),
           const SizedBox(height: 20),
           const SectionCard(
@@ -1322,4 +1331,226 @@ double? _extractSubjectScore(String subject, Map<String, dynamic> details) {
     }
   }
   return null;
+}
+
+class _SegmentBar {
+  const _SegmentBar({required this.midScore, required this.width, required this.label, required this.rangeLabel, required this.minOrder, required this.maxOrder});
+  final double midScore;
+  final int width;
+  final String label;
+  final String rangeLabel;
+  final int minOrder;
+  final int maxOrder;
+}
+
+Future<List<_SegmentBar>> _fetchSegmentBars({String province = '四川', String year = '2021', String category = '理科'}) async {
+  final original = Uri.parse('https://opendata.baidu.com/api.php').replace(queryParameters: {
+    'fromCard': '1', 'resource_id': '50266', 'province': province, 'year': year, 'category': category, 'query': '一分一段',
+  });
+
+  dynamic data;
+  try {
+    if (kIsWeb) {
+      try {
+        final proxyUri = Uri.parse('http://localhost:5310/segment').replace(queryParameters: {
+          'province': province, 'year': year, 'category': category,
+        });
+        final res = await http.get(proxyUri).timeout(const Duration(seconds: 15));
+        data = jsonDecode(utf8.decode(res.bodyBytes));
+      } catch (_) {
+        try {
+          final aouri = Uri.parse('https://api.allorigins.win/get?url=${Uri.encodeComponent(original.toString())}');
+          final res = await http.get(aouri).timeout(const Duration(seconds: 20));
+          final payload = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+          final contents = payload['contents'] as String?;
+          if (contents == null || contents.isEmpty) throw Exception('empty contents');
+          data = jsonDecode(contents);
+        } catch (_) {
+          final corsUri = Uri.parse('https://cors.isomorphic-git.org/${original.toString()}');
+          final res = await http.get(corsUri).timeout(const Duration(seconds: 20));
+          data = jsonDecode(utf8.decode(res.bodyBytes));
+        }
+      }
+    } else {
+      final res = await http.get(original).timeout(const Duration(seconds: 20));
+      data = jsonDecode(utf8.decode(res.bodyBytes));
+    }
+  } catch (_) {
+    return const <_SegmentBar>[];
+  }
+
+  List seginfo;
+  try {
+    seginfo = (data['Result'] as List).first['DisplayData']['resultData']['tplData']['segmentInfo'] as List;
+  } catch (_) {
+    return const <_SegmentBar>[];
+  }
+
+  final seen = <String>{};
+  final bars = <_SegmentBar>[];
+  for (final i in seginfo) {
+    final segText = i['segment']?.toString() ?? '';
+    final parts = segText.split('-');
+    final segMax = int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 0;
+    final segMin = int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0;
+    final infoList = i['segList'] as List? ?? const [];
+    for (final j in infoList) {
+      final maxScore = int.tryParse(j['maxScore']?.toString() ?? '');
+      final minScore = int.tryParse(j['minScore']?.toString() ?? '');
+      final minOrder = int.tryParse(j['minOrder']?.toString() ?? '');
+      final maxOrder = int.tryParse(j['maxOrder']?.toString() ?? '');
+      if (maxScore == null || minScore == null || minOrder == null || maxOrder == null) continue;
+      final key = '$segMax-$segMin-$maxScore-$minScore-$minOrder-$maxOrder';
+      if (seen.contains(key)) continue;
+      seen.add(key);
+      if (minOrder <= 100 && maxOrder <= 100) continue;
+      final mid = ((maxScore + minScore) / 2.0);
+      final width = maxOrder - minOrder;
+      bars.add(_SegmentBar(midScore: mid, width: width, label: '${mid.round()}', rangeLabel: '$segMax-$segMin', minOrder: minOrder, maxOrder: maxOrder));
+    }
+  }
+  bars.sort((a, b) => b.midScore.compareTo(a.midScore));
+  return bars;
+}
+
+class _SegmentDistributionView extends StatelessWidget {
+  const _SegmentDistributionView();
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<_SegmentBar>>(
+      future: _fetchSegmentBars(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const SizedBox(height: 220, child: Center(child: CircularProgressIndicator()));
+        }
+        final bars = snapshot.data ?? const <_SegmentBar>[];
+        if (bars.isEmpty) {
+          return const SizedBox(height: 220, child: Center(child: Text('暂无分段数据')));
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: 220, child: _SegmentBarChart(bars: bars)),
+            const SizedBox(height: 8),
+            const Text(
+              '横轴：分数中值 ； 纵轴：位次区间宽度（估算人数）',
+              style: TextStyle(fontSize: 11, color: Color(0xFF7C8698)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SegmentBarChart extends StatefulWidget {
+  const _SegmentBarChart({required this.bars});
+  final List<_SegmentBar> bars;
+  @override
+  State<_SegmentBarChart> createState() => _SegmentBarChartState();
+}
+
+class _SegmentBarChartState extends State<_SegmentBarChart> {
+  int? active;
+  static const double dx = 12.0;
+  static const double left = 40.0;
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: MouseRegion(
+        onHover: (e) {
+          final x = e.localPosition.dx;
+          final i = ((x - left) / dx).floor();
+          if (i >= 0 && i < widget.bars.length) setState(() => active = i);
+        },
+        onExit: (_) => setState(() => active = null),
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTapDown: (e) {
+            final x = e.localPosition.dx;
+            final i = ((x - left) / dx).floor();
+            if (i >= 0 && i < widget.bars.length) setState(() => active = i);
+          },
+          child: CustomPaint(
+            size: Size(_SegmentBarChartPainter.totalWidth(widget.bars.length), 220),
+            painter: _SegmentBarChartPainter(widget.bars, activeIndex: active),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SegmentBarChartPainter extends CustomPainter {
+  static double totalWidth(int count) {
+    const double left = 40.0, right = 12.0, barW = 12.0;
+    return left + right + count * barW;
+  }
+  _SegmentBarChartPainter(this.bars, {this.activeIndex});
+  final List<_SegmentBar> bars;
+  final int? activeIndex;
+  @override
+  void paint(Canvas canvas, Size size) {
+    const left = 40.0, right = 12.0, top = 12.0, bottom = 28.0;
+    final w = size.width - left - right, h = size.height - top - bottom;
+    final axis = Paint()..color = const Color(0xFFE3E8EF)..strokeWidth = 1;
+    final maxRange = bars.map((b) => b.width).fold(0, (p, c) => math.max(p, c));
+    const grid = 4;
+    final tp = TextPainter(textDirection: TextDirection.ltr);
+    for (int i = 0; i <= grid; i++) {
+      final dy = top + h / grid * i;
+      canvas.drawLine(Offset(left, dy), Offset(left + w, dy), axis);
+      final value = (maxRange - maxRange / grid * i).round();
+      tp.text = const TextSpan(style: TextStyle(fontSize: 10, color: Color(0xFF7C8698)), text: '');
+      tp.text = TextSpan(text: '$value', style: const TextStyle(fontSize: 10, color: Color(0xFF7C8698)));
+      tp.layout();
+      tp.paint(canvas, Offset(left - tp.width - 6, dy - tp.height / 2));
+    }
+    final barPaint = Paint()..color = const Color(0xFFFF9F43);
+    const double dx = 12.0;
+    for (int i = 0; i < bars.length; i++) {
+      final x = left + dx * i + 1;
+      final bh = h * (bars[i].width / (maxRange == 0 ? 1 : maxRange));
+      final rect = Rect.fromLTWH(x, top + h - bh, math.max(1.5, dx - 2), bh);
+      canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(2)), barPaint);
+    }
+    final labelPainter = TextPainter(textDirection: TextDirection.ltr);
+    final step = math.max(1, (bars.length / 8).floor());
+    for (int i = 0; i < bars.length; i += step) {
+      final x = left + dx * i + (dx / 2);
+      labelPainter.text = TextSpan(
+        text: bars[i].label,
+        style: const TextStyle(fontSize: 10, color: Color(0xFF7C8698)),
+      );
+      labelPainter.layout(maxWidth: dx + 24);
+      labelPainter.paint(canvas, Offset(x - labelPainter.width / 2, top + h + 4));
+    }
+
+    if (activeIndex != null && activeIndex! >= 0 && activeIndex! < bars.length) {
+      final i = activeIndex!;
+      final x = left + dx * i + dx / 2;
+      final bh = h * (bars[i].width / (maxRange == 0 ? 1 : maxRange));
+      final by = top + h - bh;
+      final text = '分数中值 ${bars[i].label}\n分段 ${bars[i].rangeLabel}\n位次 ${bars[i].minOrder}-${bars[i].maxOrder}\n估算人数 ${bars[i].width}';
+      final tp2 = TextPainter(textDirection: TextDirection.ltr);
+      tp2.text = TextSpan(style: const TextStyle(fontSize: 11, color: Color(0xFF1F2430)), text: text);
+      tp2.layout(maxWidth: 160);
+      final tw = tp2.width + 12;
+      final th = tp2.height + 10;
+      double tx = x - tw / 2;
+      double ty = by - th - 8;
+      if (tx < left) tx = left;
+      if (tx + tw > left + w) tx = left + w - tw;
+      if (ty < top) ty = by + 8;
+      final bg = Paint()..color = const Color(0xFFFFF3E0);
+      final border = Paint()..color = const Color(0xFFFF9F43)..style = PaintingStyle.stroke;
+      final rrect = RRect.fromRectAndRadius(Rect.fromLTWH(tx, ty, tw, th), const Radius.circular(8));
+      canvas.drawRRect(rrect, bg);
+      canvas.drawRRect(rrect, border);
+      tp2.paint(canvas, Offset(tx + 6, ty + 5));
+    }
+  }
+  @override
+  bool shouldRepaint(covariant _SegmentBarChartPainter old) => old.bars != bars || old.activeIndex != activeIndex;
 }
