@@ -4,6 +4,7 @@ import 'package:zygc_flutter_prototype/src/state/auth_scope.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'profile_edit_page.dart';
 import 'profile_weight_page.dart';
+import 'system_data_admin_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({
@@ -186,6 +187,20 @@ class ProfilePage extends StatelessWidget {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => const ProfileWeightPage(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          _FunctionTile(
+            icon: Icons.admin_panel_settings_outlined,
+            title: '系统数据管理员',
+            subtitle: '数据爬取与导入管理',
+            color: const Color(0xFF6A5ACD),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const SystemDataAdminPage(),
                 ),
               );
             },
