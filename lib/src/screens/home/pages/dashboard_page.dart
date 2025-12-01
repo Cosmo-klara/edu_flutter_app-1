@@ -9,8 +9,7 @@ import 'majors_search_page.dart';
 import 'favorite_colleges_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zygc_flutter_prototype/src/state/auth_scope.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:zygc_flutter_prototype/src/services/api_client.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({
@@ -1344,48 +1343,23 @@ class _SegmentBar {
 }
 
 Future<List<_SegmentBar>> _fetchSegmentBars({String province = '四川', String year = '2021', String category = '理科'}) async {
-  final original = Uri.parse('https://opendata.baidu.com/api.php').replace(queryParameters: {
-    'fromCard': '1', 'resource_id': '50266', 'province': province, 'year': year, 'category': category, 'query': '一分一段',
-  });
-
-  dynamic data;
+  final client = ApiClient();
+  Map<String, dynamic> data;
   try {
-    if (kIsWeb) {
-      try {
-        final proxyUri = Uri.parse('http://localhost:5310/segment').replace(queryParameters: {
-          'province': province, 'year': year, 'category': category,
-        });
-        final res = await http.get(proxyUri).timeout(const Duration(seconds: 15));
-        data = jsonDecode(utf8.decode(res.bodyBytes));
-      } catch (_) {
-        try {
-          final aouri = Uri.parse('https://api.allorigins.win/get?url=${Uri.encodeComponent(original.toString())}');
-          final res = await http.get(aouri).timeout(const Duration(seconds: 20));
-          final payload = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-          final contents = payload['contents'] as String?;
-          if (contents == null || contents.isEmpty) throw Exception('empty contents');
-          data = jsonDecode(contents);
-        } catch (_) {
-          final corsUri = Uri.parse('https://cors.isomorphic-git.org/${original.toString()}');
-          final res = await http.get(corsUri).timeout(const Duration(seconds: 20));
-          data = jsonDecode(utf8.decode(res.bodyBytes));
-        }
-      }
-    } else {
-      final res = await http.get(original).timeout(const Duration(seconds: 20));
-      data = jsonDecode(utf8.decode(res.bodyBytes));
-    }
+    data = await client.get('/segment', query: {
+      'province': province,
+      'year': year,
+      'category': category,
+    });
   } catch (_) {
     return const <_SegmentBar>[];
   }
-
   List seginfo;
   try {
     seginfo = (data['Result'] as List).first['DisplayData']['resultData']['tplData']['segmentInfo'] as List;
   } catch (_) {
     return const <_SegmentBar>[];
   }
-
   final seen = <String>{};
   final bars = <_SegmentBar>[];
   for (final i in seginfo) {
