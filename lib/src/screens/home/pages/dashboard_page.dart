@@ -1599,7 +1599,7 @@ class _SegmentBarChartPainter extends CustomPainter {
       final x = left + dx * idx + 1;
       final bh = h * (bars[i].width / (yMax == 0 ? 1 : yMax));
       final rect = Rect.fromLTWH(x, top + h - bh, math.max(1.5, dx - 3), bh);
-      final usePaint = (hIndex != null && (i - hIndex!).abs() <= 2 * step) ? barHighlightPaint : barPaint;
+      final usePaint = (hIndex != null && (i - hIndex).abs() <= 2 * step) ? barHighlightPaint : barPaint;
       canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(2)), usePaint);
     }
     final labelPainter = TextPainter(textDirection: TextDirection.ltr);
@@ -1616,7 +1616,7 @@ class _SegmentBarChartPainter extends CustomPainter {
     }
 
     if (highlightScore != null && hIndex != null) {
-      final idxH = (hIndex! ~/ step);
+      final idxH = (hIndex ~/ step);
       int iH = idxH * step;
       if (iH >= bars.length) iH = bars.length - 1;
       final x = left + dx * idxH + (dx / 2);
