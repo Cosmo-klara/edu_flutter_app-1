@@ -1342,6 +1342,62 @@ class _SegmentBar {
   final int maxOrder;
 }
 
+String _normalizeProvince(String input) {
+  var result = input.trim();
+  const suffixes = [
+    '特别行政区',
+    '维吾尔自治区',
+    '壮族自治区',
+    '回族自治区',
+    '自治区',
+    '省',
+    '市',
+  ];
+  for (final s in suffixes) {
+    if (result.endsWith(s)) {
+      result = result.substring(0, result.length - s.length);
+      break;
+    }
+  }
+  return result;
+}
+
+Future<String?> _detectCategory(BuildContext context) async {
+  final scope = AuthScope.of(context);
+  final prefs = await SharedPreferences.getInstance();
+  final raw = prefs.getString('scores_${scope.session.user.userId}');
+  if (raw == null || raw.isEmpty) return null;
+  try {
+    final decoded = (jsonDecode(raw) as List).cast<dynamic>();
+    for (final entry in decoded) {
+      if (entry is! Map) continue;
+      final map = entry.map((k, v) => MapEntry(k.toString(), v));
+      for (final key in const ['CATEGORY', 'category', 'CLASSIFY', 'classify', 'EXAM_MODE', 'examMode']) {
+        final val = map[key]?.toString() ?? '';
+        if (val.contains('理科')) return '理科';
+        if (val.contains('文科')) return '文科';
+      }
+      final detailsRaw = map['SCORE_DETAILS'] ?? map['scoreDetails'];
+      if (detailsRaw is Map) {
+        final details = detailsRaw.map((k, v) => MapEntry(k.toString(), v));
+        final keys = details.keys.join('|');
+        if (keys.contains('物理') || keys.contains('化学') || keys.contains('生物')) return '理科';
+        if (keys.contains('历史') || keys.contains('政治') || keys.contains('地理')) return '文科';
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
+Future<List<_SegmentBar>> _loadSegmentBars(BuildContext context) async {
+  final scope = AuthScope.of(context);
+  final provRaw = scope.session.user.province ?? '四川';
+  final province = _normalizeProvince(provRaw);
+  final category = await _detectCategory(context) ?? '理科';
+  const String year = '2019';
+  return _fetchSegmentBars(province: province, year: year, category: category);
+}
+
 Future<List<_SegmentBar>> _fetchSegmentBars({String province = '四川', String year = '2021', String category = '理科'}) async {
   final client = ApiClient();
   Map<String, dynamic> data;
@@ -1383,7 +1439,7 @@ Future<List<_SegmentBar>> _fetchSegmentBars({String province = '四川', String 
       bars.add(_SegmentBar(midScore: mid, width: width, label: '${mid.round()}', rangeLabel: '$segMax-$segMin', minOrder: minOrder, maxOrder: maxOrder));
     }
   }
-  bars.sort((a, b) => b.midScore.compareTo(a.midScore));
+  bars.sort((a, b) => a.midScore.compareTo(b.midScore));
   return bars;
 }
 
@@ -1391,20 +1447,43 @@ class _SegmentDistributionView extends StatelessWidget {
   const _SegmentDistributionView();
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<_SegmentBar>>(
-      future: _fetchSegmentBars(),
+    return FutureBuilder<Map<String, dynamic>>(
+      future: (() async {
+        final bars = await _loadSegmentBars(context);
+        final scope = AuthScope.of(context);
+        final prefs = await SharedPreferences.getInstance();
+        final raw = prefs.getString('scores_${scope.session.user.userId}');
+        double? score;
+        if (raw != null && raw.isNotEmpty) {
+          try {
+            final list = (jsonDecode(raw) as List).cast<dynamic>();
+            for (final e in list) {
+              final m = e is Map<String, dynamic> ? e : null;
+              if (m == null) continue;
+              for (final c in [m['TOTAL_SCORE'], m['totalScore'], m['SCORE'], m['score'], m['SUM_SCORE'], m['sumScore']]) {
+                final s = double.tryParse(c?.toString() ?? '');
+                if (s != null && s > 0 && s <= 750) { score = s; break; }
+              }
+              if (score != null) break;
+            }
+          } catch (_) {}
+        }
+        return {'bars': bars, 'score': score};
+      })(),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const SizedBox(height: 220, child: Center(child: CircularProgressIndicator()));
         }
-        final bars = snapshot.data ?? const <_SegmentBar>[];
+        final payload = snapshot.data ?? const <String, dynamic>{};
+        final bars = (payload['bars'] as List<_SegmentBar>?) ?? const <_SegmentBar>[];
+        final highlight = (payload['score'] as num?)?.toDouble();
         if (bars.isEmpty) {
           return const SizedBox(height: 220, child: Center(child: Text('暂无分段数据')));
         }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(height: 220, child: _SegmentBarChart(bars: bars)),
+            SizedBox(height: 220, child: _SegmentBarChart(bars: bars, highlightScore: highlight)),
             const SizedBox(height: 8),
             const Text(
               '横轴：分数中值 ； 纵轴：位次区间宽度（估算人数）',
@@ -1418,93 +1497,154 @@ class _SegmentDistributionView extends StatelessWidget {
 }
 
 class _SegmentBarChart extends StatefulWidget {
-  const _SegmentBarChart({required this.bars});
+  const _SegmentBarChart({required this.bars, this.highlightScore});
   final List<_SegmentBar> bars;
+  final double? highlightScore;
   @override
   State<_SegmentBarChart> createState() => _SegmentBarChartState();
 }
 
 class _SegmentBarChartState extends State<_SegmentBarChart> {
   int? active;
-  static const double dx = 12.0;
-  static const double left = 40.0;
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: MouseRegion(
-        onHover: (e) {
-          final x = e.localPosition.dx;
-          final i = ((x - left) / dx).floor();
-          if (i >= 0 && i < widget.bars.length) setState(() => active = i);
-        },
-        onExit: (_) => setState(() => active = null),
-        child: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTapDown: (e) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final canvasWidth = constraints.maxWidth;
+        final step = _SegmentBarChartPainter.computeSamplingStep(canvasWidth, widget.bars.length);
+        final sampleCount = (widget.bars.length + step - 1) ~/ step;
+        final dx = _SegmentBarChartPainter.computeDx(canvasWidth, sampleCount);
+        const double left = 40.0;
+        return MouseRegion(
+          onHover: (e) {
             final x = e.localPosition.dx;
-            final i = ((x - left) / dx).floor();
+            final idx = ((x - left) / dx).floor();
+            final i = idx * step;
             if (i >= 0 && i < widget.bars.length) setState(() => active = i);
           },
-          child: CustomPaint(
-            size: Size(_SegmentBarChartPainter.totalWidth(widget.bars.length), 220),
-            painter: _SegmentBarChartPainter(widget.bars, activeIndex: active),
+          onExit: (_) => setState(() => active = null),
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTapDown: (e) {
+              final x = e.localPosition.dx;
+              final idx = ((x - left) / dx).floor();
+              final i = idx * step;
+              if (i >= 0 && i < widget.bars.length) setState(() => active = i);
+            },
+            child: CustomPaint(
+              size: Size(canvasWidth, 220),
+              painter: _SegmentBarChartPainter(widget.bars, activeIndex: active, highlightScore: widget.highlightScore),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
 class _SegmentBarChartPainter extends CustomPainter {
-  static double totalWidth(int count) {
-    const double left = 40.0, right = 12.0, barW = 12.0;
-    return left + right + count * barW;
+  static double computeDx(double canvasWidth, int count) {
+    const double left = 40.0, right = 12.0;
+    final w = canvasWidth - left - right;
+    final raw = w / (count <= 0 ? 1 : count);
+    if (raw < 10.0) return 10.0;
+    if (raw > 16.0) return 16.0;
+    return raw;
   }
-  _SegmentBarChartPainter(this.bars, {this.activeIndex});
+  static int computeSamplingStep(double canvasWidth, int count) {
+    const double left = 40.0, right = 12.0;
+    final w = canvasWidth - left - right;
+    if (count <= 0 || w <= 0) return 1;
+    final rawDx = w / count;
+    if (rawDx >= 10.0) return 1;
+    return (10.0 / rawDx).ceil();
+  }
+  _SegmentBarChartPainter(this.bars, {this.activeIndex, this.highlightScore});
   final List<_SegmentBar> bars;
   final int? activeIndex;
+  final double? highlightScore;
   @override
   void paint(Canvas canvas, Size size) {
     const left = 40.0, right = 12.0, top = 12.0, bottom = 28.0;
     final w = size.width - left - right, h = size.height - top - bottom;
     final axis = Paint()..color = const Color(0xFFE3E8EF)..strokeWidth = 1;
     final maxRange = bars.map((b) => b.width).fold(0, (p, c) => math.max(p, c));
-    const grid = 4;
+    int niceStep(int v) { if (v <= 50) return 10; if (v <= 200) return 20; if (v <= 500) return 50; if (v <= 1000) return 100; return 200; }
+    int roundUp(int v, int step) => ((v + step - 1) ~/ step) * step;
+    final yMax = roundUp(maxRange == 0 ? 1 : maxRange, niceStep(maxRange));
+    const grid = 5;
     final tp = TextPainter(textDirection: TextDirection.ltr);
     for (int i = 0; i <= grid; i++) {
       final dy = top + h / grid * i;
       canvas.drawLine(Offset(left, dy), Offset(left + w, dy), axis);
-      final value = (maxRange - maxRange / grid * i).round();
-      tp.text = const TextSpan(style: TextStyle(fontSize: 10, color: Color(0xFF7C8698)), text: '');
+      final value = (yMax - yMax / grid * i).round();
       tp.text = TextSpan(text: '$value', style: const TextStyle(fontSize: 10, color: Color(0xFF7C8698)));
       tp.layout();
       tp.paint(canvas, Offset(left - tp.width - 6, dy - tp.height / 2));
     }
     final barPaint = Paint()..color = const Color(0xFFFF9F43);
-    const double dx = 12.0;
-    for (int i = 0; i < bars.length; i++) {
-      final x = left + dx * i + 1;
-      final bh = h * (bars[i].width / (maxRange == 0 ? 1 : maxRange));
-      final rect = Rect.fromLTWH(x, top + h - bh, math.max(1.5, dx - 2), bh);
-      canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(2)), barPaint);
+    final step = _SegmentBarChartPainter.computeSamplingStep(size.width, bars.length);
+    final sampleCount = (bars.length + step - 1) ~/ step;
+    final double dx = _SegmentBarChartPainter.computeDx(size.width, sampleCount);
+    int? hIndex;
+    if (highlightScore != null) {
+      double minDiff = double.infinity;
+      for (int i = 0; i < bars.length; i++) {
+        final d = (bars[i].midScore - highlightScore!).abs();
+        if (d < minDiff) { minDiff = d; hIndex = i; }
+      }
+    }
+    final barHighlightPaint = Paint()..color = const Color(0xFFFF7043);
+    for (int idx = 0, i = 0; i < bars.length; i += step, idx++) {
+      final x = left + dx * idx + 1;
+      final bh = h * (bars[i].width / (yMax == 0 ? 1 : yMax));
+      final rect = Rect.fromLTWH(x, top + h - bh, math.max(1.5, dx - 3), bh);
+      final usePaint = (hIndex != null && (i - hIndex!).abs() <= 2 * step) ? barHighlightPaint : barPaint;
+      canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(2)), usePaint);
     }
     final labelPainter = TextPainter(textDirection: TextDirection.ltr);
-    final step = math.max(1, (bars.length / 8).floor());
-    for (int i = 0; i < bars.length; i += step) {
-      final x = left + dx * i + (dx / 2);
+    final labelStep = math.max(1, (sampleCount / 10).floor());
+    for (int idx = 0, i = 0; i < bars.length; i += step, idx++) {
+      if (idx % labelStep != 0) continue;
+      final x = left + dx * idx + (dx / 2);
       labelPainter.text = TextSpan(
         text: bars[i].label,
         style: const TextStyle(fontSize: 10, color: Color(0xFF7C8698)),
       );
-      labelPainter.layout(maxWidth: dx + 24);
+      labelPainter.layout(maxWidth: math.max(24, dx + 24));
       labelPainter.paint(canvas, Offset(x - labelPainter.width / 2, top + h + 4));
+    }
+
+    if (highlightScore != null && hIndex != null) {
+      final idxH = (hIndex! ~/ step);
+      int iH = idxH * step;
+      if (iH >= bars.length) iH = bars.length - 1;
+      final x = left + dx * idxH + (dx / 2);
+      final bh = h * (bars[iH].width / (yMax == 0 ? 1 : yMax));
+      final by = top + h - bh;
+      final tpUser = TextPainter(textDirection: TextDirection.ltr);
+      tpUser.text = TextSpan(text: '我的分数 ${highlightScore!.round()}', style: const TextStyle(fontSize: 11, color: Color(0xFF1F2430)));
+      tpUser.layout();
+      final tw = tpUser.width + 12;
+      final th = tpUser.height + 10;
+      double tx = x - tw / 2;
+      double ty = by - th - 8;
+      if (tx < left) tx = left;
+      if (tx + tw > left + w) tx = left + w - tw;
+      if (ty < top) ty = by + 8;
+      final bg2 = Paint()..color = const Color(0xFFFFF3E0);
+      final border2 = Paint()..color = const Color(0xFFFF7043)..style = PaintingStyle.stroke;
+      final r2 = RRect.fromRectAndRadius(Rect.fromLTWH(tx, ty, tw, th), const Radius.circular(8));
+      canvas.drawRRect(r2, bg2);
+      canvas.drawRRect(r2, border2);
+      tpUser.paint(canvas, Offset(tx + 6, ty + 5));
     }
 
     if (activeIndex != null && activeIndex! >= 0 && activeIndex! < bars.length) {
       final i = activeIndex!;
-      final x = left + dx * i + dx / 2;
-      final bh = h * (bars[i].width / (maxRange == 0 ? 1 : maxRange));
+      final idxActive = (i ~/ step);
+      final x = left + dx * idxActive + dx / 2;
+      final bh = h * (bars[i].width / (yMax == 0 ? 1 : yMax));
       final by = top + h - bh;
       final text = '分数中值 ${bars[i].label}\n分段 ${bars[i].rangeLabel}\n位次 ${bars[i].minOrder}-${bars[i].maxOrder}\n估算人数 ${bars[i].width}';
       final tp2 = TextPainter(textDirection: TextDirection.ltr);

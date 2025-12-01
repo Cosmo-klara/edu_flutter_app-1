@@ -4,7 +4,6 @@ import 'package:zygc_flutter_prototype/src/state/auth_scope.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'profile_edit_page.dart';
 import 'profile_weight_page.dart';
-import 'profile_notification_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({
@@ -193,20 +192,6 @@ class ProfilePage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           
-          _FunctionTile(
-            icon: Icons.notifications_outlined,
-            title: '通知提醒',
-            subtitle: '管理各类消息推送',
-            color: const Color(0xFF00B8D4),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const ProfileNotificationPage(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
