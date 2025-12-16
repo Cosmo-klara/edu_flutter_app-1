@@ -177,10 +177,6 @@ Android 模拟器:
 flutter run -d android
 ```
 
-使用本地 API (可选):
-```bash
-flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:3000
-```
 
 ## 更新日志
 
@@ -211,8 +207,6 @@ flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:3000
 ### 交互问题
 
 - [ ] 院校页面（collegeg_page.dart）有一个收藏功能，对应的数据库表现在是否有收藏字段
-
-
 
 首先是我们的登录页面，我们先注册一个用户test，这个用户已经注册过了所以校验的时候会失败，用户密码存储是用的多轮随机盐加密存储哈希值实现的，我们修改用户名重新注册；
 
